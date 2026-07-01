@@ -492,10 +492,10 @@
       </select>
     </div>
     <div class="field-group">
-      <label>Track Interval</label>
+      <label>GPS Plot Interval</label>
       <select id="trackInterval">
-        <option value="1000">1 sec — High density</option>
-        <option value="2000" selected>2 sec — Recommended</option>
+        <option value="1000" selected>1 sec — High density</option>
+        <option value="2000">2 sec — Recommended</option>
         <option value="5000">5 sec — Light</option>
         <option value="10000">10 sec — Minimal</option>
       </select>
@@ -525,8 +525,8 @@
 <div class="actions">
   <!-- Terminus buttons -->
   <div class="btn-row">
-    <button class="btn-small" id="btnStartTerminus" onclick="markTerminus('start')">🟡 Start Terminus</button>
-    <button class="btn-small" id="btnEndTerminus" onclick="markTerminus('end')">🔴 End Terminus</button>
+    <button class="btn-small" id="btnStartTerminus" onclick="markTerminus('start')">🟢 Start Route</button>
+    <button class="btn-small" id="btnEndTerminus" onclick="markTerminus('end')">🔴 End Route</button>
   </div>
 
   <!-- Stop marking -->
@@ -562,7 +562,7 @@
   <div class="stops-list" id="stopsList">
     <div class="empty-state">
       <div class="empty-icon">🚏</div>
-      Mark your <strong>Start Terminus</strong> first,<br>then tap stops along the route,<br>finish with <strong>End Terminus</strong>.
+      Tap <strong>Start Route</strong> at the depot,<br>then mark stops along the way,<br>tap <strong>End Route</strong> at the destination.
     </div>
   </div>
 </div>
@@ -590,17 +590,9 @@
     <span>📄</span> Export as GPX
     <span class="ext">GPS Exchange Format</span>
   </button>
-  <button class="btn-export" id="btnExportCSV" onclick="exportCSV()">
-    <span>📊</span> Export Stops as CSV
-    <span class="ext">Spreadsheet / eDriver</span>
-  </button>
   <button class="btn-export" id="btnExportKML" onclick="exportKML()">
     <span>🌍</span> Export as KML
     <span class="ext">Google Earth / Maps</span>
-  </button>
-  <button class="btn-export" id="btnExportJSON" onclick="exportJSON()">
-    <span>🔧</span> Export Full JSON
-    <span class="ext">Developer / Import</span>
   </button>
 </div>
 
@@ -643,7 +635,7 @@ initGPS();
 // ─── TERMINUS ───────────────────────────────────────────────────────────────
 function markTerminus(type) {
   if (!currentPos) { showToast('Waiting for GPS fix...', true); return; }
-  const label = type === 'start' ? 'Start Terminus' : 'End Terminus';
+  const label = type === 'start' ? 'Start Route' : 'End Route';
   // Remove existing terminus of this type
   stops = stops.filter(s => s.type !== `terminus-${type}`);
   stops.push({
@@ -655,10 +647,63 @@ function markTerminus(type) {
     type: `terminus-${type}`,
     time: new Date().toISOString()
   });
-  // Sort: start terminus first, end terminus last, stops in middle by time
   sortStops();
   renderStops();
-  showToast(`${label} marked ✓`);
+
+  if (type === 'start') {
+    // Auto start recording if not already recording
+    if (!isTracking) {
+      startRecording();
+      showToast('Start Terminus marked ✓ — Recording started');
+    } else {
+      showToast('Start Terminus marked ✓');
+    }
+  } else {
+    // Auto stop recording if currently recording
+    if (isTracking) {
+      stopRecording();
+      showToast(`End Terminus marked ✓ — Recording stopped (${waypoints.length} waypoints)`);
+    } else {
+      showToast('End Terminus marked ✓');
+    }
+  }
+}
+
+// ─── WAYPOINT TRACKING ───────────────────────────────────────────────────────
+function startRecording() {
+  if (isTracking) return;
+  isTracking = true;
+  document.getElementById('btnTrack').textContent = '⏹ Stop Recording';
+  document.getElementById('btnTrack').style.color = 'var(--accent2)';
+  document.getElementById('trackingIndicator').classList.add('active');
+  const intervalMs = parseInt(document.getElementById('trackInterval').value);
+  const intervalLabel = `${intervalMs/1000}s`;
+  document.getElementById('trackInterval').disabled = true;
+  trackingInterval = setInterval(() => {
+    if (currentPos) {
+      wptCounter++;
+      waypoints.push({
+        seq: wptCounter,
+        lat: currentPos.lat,
+        lng: currentPos.lng,
+        acc: currentPos.acc,
+        time: new Date().toISOString()
+      });
+      document.getElementById('wptCountText').textContent = `Recording every ${intervalLabel} · ${waypoints.length} pts`;
+      document.getElementById('wptCount').textContent = waypoints.length;
+      renderWaypoints();
+    }
+  }, intervalMs);
+}
+
+function stopRecording() {
+  if (!isTracking) return;
+  clearInterval(trackingInterval);
+  isTracking = false;
+  document.getElementById('btnTrack').textContent = '▶ Record Route';
+  document.getElementById('btnTrack').style.color = '';
+  document.getElementById('trackingIndicator').classList.remove('active');
+  document.getElementById('trackInterval').disabled = false;
 }
 
 // ─── STOP ────────────────────────────────────────────────────────────────────
@@ -697,13 +742,13 @@ function renderStops() {
   const list = document.getElementById('stopsList');
   document.getElementById('stopCount').textContent = stops.length;
   if (stops.length === 0) {
-    list.innerHTML = `<div class="empty-state"><div class="empty-icon">🚏</div>Mark your <strong>Start Terminus</strong> first,<br>then tap stops along the route,<br>finish with <strong>End Terminus</strong>.</div>`;
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">🚏</div>Tap <strong>Start Route</strong> at the depot,<br>then mark stops along the way,<br>tap <strong>End Route</strong> at the destination.</div>`;
     return;
   }
   list.innerHTML = stops.map((s, i) => {
     const isTerminus = s.type.startsWith('terminus');
     const badge = isTerminus
-      ? `<span class="stop-type-badge badge-terminus">${s.type === 'terminus-start' ? 'START' : 'END'}</span>`
+      ? `<span class="stop-type-badge badge-terminus">${s.type === 'terminus-start' ? 'START ROUTE' : 'END ROUTE'}</span>`
       : `<span class="stop-type-badge badge-stop">STOP</span>`;
     return `
       <div class="stop-item">
@@ -719,42 +764,15 @@ function renderStops() {
   }).join('');
 }
 
-// ─── WAYPOINT TRACKING ───────────────────────────────────────────────────────
 function toggleTracking() {
   if (isTracking) {
-    // Stop
-    clearInterval(trackingInterval);
-    isTracking = false;
-    document.getElementById('btnTrack').textContent = '▶ Record Route';
-    document.getElementById('btnTrack').style.color = '';
-    document.getElementById('trackingIndicator').classList.remove('active');
-    document.getElementById('trackInterval').disabled = false;
+    stopRecording();
     showToast(`Recording stopped. ${waypoints.length} waypoints captured.`);
   } else {
     if (!currentPos) { showToast('Waiting for GPS fix...', true); return; }
-    isTracking = true;
-    document.getElementById('btnTrack').textContent = '⏹ Stop Recording';
-    document.getElementById('btnTrack').style.color = 'var(--accent2)';
-    document.getElementById('trackingIndicator').classList.add('active');
     const intervalMs = parseInt(document.getElementById('trackInterval').value);
-    const intervalLabel = `${intervalMs/1000}s`;
-    document.getElementById('trackInterval').disabled = true;
-    trackingInterval = setInterval(() => {
-      if (currentPos) {
-        wptCounter++;
-        waypoints.push({
-          seq: wptCounter,
-          lat: currentPos.lat,
-          lng: currentPos.lng,
-          acc: currentPos.acc,
-          time: new Date().toISOString()
-        });
-        document.getElementById('wptCountText').textContent = `Recording every ${intervalLabel} · ${waypoints.length} pts`;
-        document.getElementById('wptCount').textContent = waypoints.length;
-        renderWaypoints();
-      }
-    }, intervalMs);
-    showToast(`Recording at ${intervalLabel} intervals — tap stops as you go`);
+    startRecording();
+    showToast(`Recording at ${intervalMs/1000}s intervals — tap stops as you go`);
   }
 }
 
@@ -787,7 +805,7 @@ function switchTab(tab) {
 // ─── CLEAR ───────────────────────────────────────────────────────────────────
 function clearAll() {
   if (!confirm('Clear all stops and waypoints? This cannot be undone.')) return;
-  if (isTracking) toggleTracking();
+  if (isTracking) stopRecording();
   stops = []; waypoints = []; wptCounter = 0;
   renderStops(); renderWaypoints();
   document.getElementById('stopCount').textContent = 0;
@@ -834,36 +852,6 @@ function exportGPX() {
   showToast('GPX exported ✓');
 }
 
-// ─── EXPORT: CSV ──────────────────────────────────────────────────────────────
-function exportCSV() {
-  if (stops.length === 0) { showToast('No stops to export', true); return; }
-  const route = document.getElementById('routeName').value || 'route';
-  const op = document.getElementById('operatorName').value || '';
-  const dir = document.getElementById('direction').value;
-  let csv = 'seq,stop_name,latitude,longitude,accuracy_m,type,operator,route,direction,timestamp\n';
-  stops.forEach((s, i) => {
-    csv += `${i+1},"${s.name}",${s.lat},${s.lng},${Math.round(s.acc)},${s.type},"${op}","${route}",${dir},${s.time}\n`;
-  });
-  download(`${route}_stops.csv`, csv, 'text/csv');
-  showToast('CSV exported ✓');
-}
-
-// ─── EXPORT: JSON ─────────────────────────────────────────────────────────────
-function exportJSON() {
-  if (stops.length === 0 && waypoints.length === 0) { showToast('Nothing to export yet', true); return; }
-  const route = document.getElementById('routeName').value || 'route';
-  const payload = {
-    route_name: route,
-    operator: document.getElementById('operatorName').value,
-    surveyor: document.getElementById('surveyorName').value,
-    direction: document.getElementById('direction').value,
-    exported_at: new Date().toISOString(),
-    stops: stops.map((s, i) => ({ seq: i+1, name: s.name, lat: s.lat, lng: s.lng, accuracy_m: Math.round(s.acc), type: s.type, timestamp: s.time })),
-    waypoints: waypoints.map(w => ({ seq: w.seq, lat: w.lat, lng: w.lng, accuracy_m: Math.round(w.acc), timestamp: w.time }))
-  };
-  download(`${route}_survey.json`, JSON.stringify(payload, null, 2), 'application/json');
-  showToast('JSON exported ✓');
-}
 
 // ─── EXPORT: KML ─────────────────────────────────────────────────────────────
 function exportKML() {
