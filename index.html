@@ -149,24 +149,6 @@
         <option value="10000">10 sec — Minimal</option>
       </select>
     </div>
-    <div class="field-group">
-      <label>Accuracy Filter</label>
-      <select id="accuracyFilter">
-        <option value="10">±10m — Strict</option>
-        <option value="20" selected>±20m — Recommended</option>
-        <option value="30">±30m — Relaxed</option>
-        <option value="999">Off — No filter</option>
-      </select>
-    </div>
-    <div class="field-group">
-      <label>Jump Filter</label>
-      <select id="jumpFilter">
-        <option value="30">30m — Strict</option>
-        <option value="50" selected>50m — Recommended</option>
-        <option value="100">100m — Relaxed</option>
-        <option value="999999">Off — No filter</option>
-      </select>
-    </div>
   </div>
 </div>
 
@@ -311,6 +293,8 @@ function markTerminus(type) {
 window.markTerminus = markTerminus;
 
 // ─── RECORDING ───────────────────────────────────────────────────────────────
+const SAFETY_JUMP_M = 200; // hidden safety filter — rejects extreme GPS garbage only
+
 function startRecording() {
   if (isTracking) return;
   isTracking = true;
@@ -319,11 +303,7 @@ function startRecording() {
   document.getElementById('trackingIndicator').classList.add('active');
   const intervalMs = parseInt(document.getElementById('trackInterval').value);
   const intervalLabel = `${intervalMs/1000}s`;
-  const accuracyThreshold = parseFloat(document.getElementById('accuracyFilter').value);
-  const jumpThreshold = parseFloat(document.getElementById('jumpFilter').value);
   document.getElementById('trackInterval').disabled = true;
-  document.getElementById('accuracyFilter').disabled = true;
-  document.getElementById('jumpFilter').disabled = true;
 
   let lastAccepted = null;
   let skippedCount = 0;
@@ -331,31 +311,22 @@ function startRecording() {
   trackingInterval = setInterval(() => {
     if (!currentPos) return;
 
-    // ── Accuracy filter ──────────────────────────────
-    if (currentPos.acc > accuracyThreshold) {
-      skippedCount++;
-      document.getElementById('wptCountText').textContent =
-        `Recording every ${intervalLabel} · ${waypoints.length} pts · ⚠️ ${skippedCount} skipped (poor GPS)`;
-      return;
-    }
-
-    // ── Jump filter ──────────────────────────────────
+    // Hidden safety filter — only rejects extreme garbage jumps (>200m)
     if (lastAccepted) {
       const dist = haversine(lastAccepted.lat, lastAccepted.lng, currentPos.lat, currentPos.lng);
-      if (dist > jumpThreshold) {
+      if (dist > SAFETY_JUMP_M) {
         skippedCount++;
         document.getElementById('wptCountText').textContent =
-          `Recording every ${intervalLabel} · ${waypoints.length} pts · ⚠️ ${skippedCount} skipped (GPS jump ${Math.round(dist)}m)`;
+          `Recording every ${intervalLabel} · ${waypoints.length} pts · ${skippedCount} rejected`;
         return;
       }
     }
 
-    // ── Accept point ─────────────────────────────────
     wptCounter++;
     lastAccepted = { lat: currentPos.lat, lng: currentPos.lng };
     waypoints.push({ seq: wptCounter, lat: currentPos.lat, lng: currentPos.lng, acc: currentPos.acc, time: new Date().toISOString() });
     document.getElementById('wptCountText').textContent =
-      `Recording every ${intervalLabel} · ${waypoints.length} pts${skippedCount > 0 ? ` · ${skippedCount} filtered` : ''}`;
+      `Recording every ${intervalLabel} · ${waypoints.length} pts`;
     document.getElementById('wptCount').textContent = waypoints.length;
     renderWaypoints();
   }, intervalMs);
@@ -369,8 +340,6 @@ function stopRecording() {
   document.getElementById('btnTrack').style.color = '';
   document.getElementById('trackingIndicator').classList.remove('active');
   document.getElementById('trackInterval').disabled = false;
-  document.getElementById('accuracyFilter').disabled = false;
-  document.getElementById('jumpFilter').disabled = false;
 }
 
 function toggleTracking() {
@@ -490,17 +459,62 @@ function browserDownload(filename, content, mime) {
   showToast(`${filename} downloaded ✓`);
 }
 
+// ─── SNAP TO ROADS (OSRM) ─────────────────────────────────────────────────────
+// Sends waypoints to the free OSRM match service and returns road-snapped points.
+// Falls back to raw waypoints if offline or the service fails.
+async function snapToRoads(points) {
+  if (points.length < 2) return { points, snapped: false };
+  try {
+    // OSRM match API limit — process in chunks
+    const CHUNK = 90;
+    let snappedCoords = [];
+    for (let i = 0; i < points.length; i += CHUNK - 1) {
+      const chunk = points.slice(i, i + CHUNK);
+      if (chunk.length < 2) break;
+      const coordStr = chunk.map(p => `${p.lng},${p.lat}`).join(';');
+      const radiusStr = chunk.map(p => Math.max(10, Math.min(50, Math.round(p.acc || 20)))).join(';');
+      const url = `https://router.project-osrm.org/match/v1/driving/${coordStr}?geometries=geojson&overview=full&radiuses=${radiusStr}`;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 15000);
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timer);
+      if (!res.ok) throw new Error(`OSRM ${res.status}`);
+      const data = await res.json();
+      if (data.code !== 'Ok' || !data.matchings || data.matchings.length === 0) throw new Error('No match');
+      data.matchings.forEach(m => {
+        m.geometry.coordinates.forEach(c => snappedCoords.push({ lng: c[0], lat: c[1] }));
+      });
+    }
+    if (snappedCoords.length < 2) throw new Error('Empty result');
+    return { points: snappedCoords, snapped: true };
+  } catch (e) {
+    console.warn('Snap-to-roads unavailable, using raw GPS:', e.message);
+    return { points, snapped: false };
+  }
+}
+
 // ─── EXPORT: GPX ─────────────────────────────────────────────────────────────
 async function exportGPX() {
   if (stops.length === 0 && waypoints.length === 0) { showToast('Nothing to export yet', true); return; }
   const route = document.getElementById('routeName').value || 'route';
   const op = document.getElementById('operatorName').value || '';
   const now = new Date().toISOString();
+
+  // Snap route to roads if online
+  let trackPoints = waypoints;
+  let snappedLabel = '';
+  if (waypoints.length > 1) {
+    showToast('Snapping route to roads...');
+    const result = await snapToRoads(waypoints);
+    trackPoints = result.points;
+    snappedLabel = result.snapped ? ' (road-snapped)' : ' (raw GPS)';
+  }
+
   let gpx = `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="RouteSurvey-IPTMS" xmlns="http://www.topografix.com/GPX/1/1">
   <metadata>
     <name>${escXml(route)}</name>
-    <desc>Operator: ${escXml(op)} | Surveyor: ${escXml(document.getElementById('surveyorName').value)} | Direction: ${document.getElementById('direction').value}</desc>
+    <desc>Operator: ${escXml(op)} | Surveyor: ${escXml(document.getElementById('surveyorName').value)} | Direction: ${document.getElementById('direction').value}${snappedLabel}</desc>
     <time>${now}</time>
   </metadata>\n`;
   stops.forEach((s, i) => {
@@ -511,9 +525,9 @@ async function exportGPX() {
     <sym>${s.type.startsWith('terminus') ? 'Flag' : 'Bus Stop'}</sym>
   </wpt>\n`;
   });
-  if (waypoints.length > 0) {
+  if (trackPoints.length > 0) {
     gpx += `  <trk>\n    <name>${escXml(route)} Track</name>\n    <trkseg>\n`;
-    waypoints.forEach(w => { gpx += `      <trkpt lat="${w.lat}" lon="${w.lng}"><time>${w.time}</time></trkpt>\n`; });
+    trackPoints.forEach(w => { gpx += `      <trkpt lat="${w.lat}" lon="${w.lng}">${w.time ? `<time>${w.time}</time>` : ''}</trkpt>\n`; });
     gpx += `    </trkseg>\n  </trk>\n`;
   }
   gpx += `</gpx>`;
@@ -528,11 +542,22 @@ async function exportKML() {
   const op = document.getElementById('operatorName').value || '';
   const surveyor = document.getElementById('surveyorName').value || '';
   const dir = document.getElementById('direction').value;
+
+  // Snap route to roads if online
+  let trackPoints = waypoints;
+  let snappedLabel = '';
+  if (waypoints.length > 1) {
+    showToast('Snapping route to roads...');
+    const result = await snapToRoads(waypoints);
+    trackPoints = result.points;
+    snappedLabel = result.snapped ? ' (road-snapped)' : ' (raw GPS)';
+  }
+
   let kml = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
 <Document>
   <name>${escXml(route)}</name>
-  <description>Operator: ${escXml(op)} | Surveyor: ${escXml(surveyor)} | Direction: ${dir}</description>
+  <description>Operator: ${escXml(op)} | Surveyor: ${escXml(surveyor)} | Direction: ${dir}${snappedLabel}</description>
   <Style id="start-style">
     <IconStyle><color>ff00ff00</color><scale>1.3</scale><Icon><href>http://maps.google.com/mapfiles/kml/paddle/grn-circle.png</href></Icon></IconStyle>
   </Style>
@@ -556,13 +581,13 @@ async function exportKML() {
     </Placemark>\n`;
   });
   kml += `  </Folder>\n`;
-  if (waypoints.length > 0) {
+  if (trackPoints.length > 0) {
     kml += `  <Folder><name>Route Track</name>
     <Placemark>
       <name>${escXml(route)} Path</name>
       <styleUrl>#route-style</styleUrl>
       <LineString><tessellate>1</tessellate><coordinates>\n`;
-    waypoints.forEach(w => { kml += `          ${w.lng},${w.lat},0\n`; });
+    trackPoints.forEach(w => { kml += `          ${w.lng},${w.lat},0\n`; });
     kml += `        </coordinates></LineString>
     </Placemark>
   </Folder>\n`;
