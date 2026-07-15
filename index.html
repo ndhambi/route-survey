@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Route Survey Tool</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#f0b429">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -27,8 +31,6 @@
     display: flex;
     flex-direction: column;
   }
-
-  /* HEADER */
   header {
     background: var(--surface);
     border-bottom: 2px solid var(--accent);
@@ -40,420 +42,68 @@
     top: 0;
     z-index: 100;
   }
-  .logo {
-    font-family: 'Rajdhani', sans-serif;
-    font-weight: 700;
-    font-size: 1.2rem;
-    color: var(--accent);
-    letter-spacing: 2px;
-  }
+  .logo { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1.2rem; color: var(--accent); letter-spacing: 2px; }
   .logo span { color: var(--text); }
-  .gps-badge {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.7rem;
-    color: var(--muted);
-    padding: 4px 10px;
-    border: 1px solid var(--border);
-    border-radius: 20px;
-  }
-  .gps-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--danger);
-    transition: background 0.3s;
-  }
+  .gps-badge { display: flex; align-items: center; gap: 6px; font-size: 0.7rem; color: var(--muted); padding: 4px 10px; border: 1px solid var(--border); border-radius: 20px; }
+  .gps-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); transition: background 0.3s; }
   .gps-dot.active { background: var(--accent2); animation: pulse 1.5s infinite; }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
-  }
-
-  /* SETUP PANEL */
-  .setup-panel {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 16px;
-  }
-  .setup-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-  .field-group {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .setup-panel { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px; }
+  .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .field-group { display: flex; flex-direction: column; gap: 4px; }
   .field-group.full { grid-column: 1 / -1; }
-  label {
-    font-size: 0.65rem;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-  input, select {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text);
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.85rem;
-    padding: 8px 10px;
-    width: 100%;
-    outline: none;
-    transition: border-color 0.2s;
-  }
+  label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  input, select { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; padding: 8px 10px; width: 100%; outline: none; transition: border-color 0.2s; }
   input:focus, select:focus { border-color: var(--accent); }
-
-  /* GPS COORDS DISPLAY */
-  .coords-box {
-    margin: 12px 16px 0;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 14px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .coords-val {
-    font-size: 0.75rem;
-    color: var(--accent2);
-  }
+  .coords-box { margin: 12px 16px 0; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; }
+  .coords-val { font-size: 0.75rem; color: var(--accent2); }
   .coords-label { font-size: 0.65rem; color: var(--muted); }
   .accuracy-val { font-size: 0.65rem; color: var(--muted); text-align: right; }
-
-  /* ACTION BUTTONS */
-  .actions {
-    padding: 14px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .btn-primary {
-    background: var(--accent);
-    color: #000;
-    border: none;
-    border-radius: 8px;
-    font-family: 'Rajdhani', sans-serif;
-    font-weight: 700;
-    font-size: 1.1rem;
-    letter-spacing: 1.5px;
-    padding: 16px;
-    width: 100%;
-    cursor: pointer;
-    text-transform: uppercase;
-    transition: transform 0.1s, opacity 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-  .btn-primary:active { transform: scale(0.97); }
-  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
-  .btn-secondary {
-    background: transparent;
-    color: var(--stop-color);
-    border: 2px solid var(--stop-color);
-    border-radius: 8px;
-    font-family: 'Rajdhani', sans-serif;
-    font-weight: 700;
-    font-size: 1.1rem;
-    letter-spacing: 1.5px;
-    padding: 14px;
-    width: 100%;
-    cursor: pointer;
-    text-transform: uppercase;
-    transition: background 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-  .btn-secondary:active { background: rgba(88,166,255,0.1); }
-  .btn-secondary:disabled { opacity: 0.3; cursor: not-allowed; }
-  .btn-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-  .btn-small {
-    background: var(--surface2);
-    color: var(--text);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    font-family: 'Rajdhani', sans-serif;
-    font-weight: 600;
-    font-size: 0.9rem;
-    letter-spacing: 1px;
-    padding: 12px 8px;
-    cursor: pointer;
-    text-transform: uppercase;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    transition: border-color 0.2s;
-  }
+  .actions { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .btn-small { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 0.9rem; letter-spacing: 1px; padding: 12px 8px; cursor: pointer; text-transform: uppercase; display: flex; align-items: center; justify-content: center; gap: 6px; transition: border-color 0.2s; }
   .btn-small:hover { border-color: var(--accent); }
   .btn-small.danger { color: var(--danger); border-color: var(--danger); }
   .btn-small:disabled { opacity: 0.3; cursor: not-allowed; }
-
-  /* STOP NAME INPUT ROW */
-  .stop-input-row {
-    display: flex;
-    gap: 8px;
-    align-items: flex-end;
-  }
+  .stop-input-row { display: flex; gap: 8px; align-items: flex-end; }
   .stop-input-row .field-group { flex: 1; }
-  .btn-mark {
-    background: var(--stop-color);
-    color: #000;
-    border: none;
-    border-radius: 8px;
-    font-family: 'Rajdhani', sans-serif;
-    font-weight: 700;
-    font-size: 0.9rem;
-    padding: 8px 14px;
-    cursor: pointer;
-    white-space: nowrap;
-    height: 36px;
-    align-self: flex-end;
-    letter-spacing: 1px;
-  }
-
-  /* DIVIDER */
-  .divider {
-    border: none;
-    border-top: 1px solid var(--border);
-    margin: 0 16px;
-  }
-
-  /* STOPS LIST */
-  .stops-section {
-    flex: 1;
-    padding: 14px 16px;
-  }
-  .section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 12px;
-  }
-  .section-title {
-    font-family: 'Rajdhani', sans-serif;
-    font-weight: 600;
-    font-size: 0.9rem;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 2px;
-  }
-  .stop-count {
-    background: var(--accent);
-    color: #000;
-    border-radius: 10px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    padding: 2px 8px;
-  }
-  .stops-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .stop-item {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 12px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    animation: slideIn 0.25s ease;
-  }
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateY(-8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .stop-index {
-    width: 26px; height: 26px;
-    border-radius: 50%;
-    background: var(--stop-color);
-    color: #000;
-    font-family: 'Rajdhani', sans-serif;
-    font-weight: 700;
-    font-size: 0.8rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
+  .btn-mark { background: var(--stop-color); color: #000; border: none; border-radius: 8px; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.9rem; padding: 8px 14px; cursor: pointer; white-space: nowrap; height: 36px; align-self: flex-end; letter-spacing: 1px; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 0 16px; }
+  .stops-section { flex: 1; padding: 14px 16px; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .section-title { font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 0.9rem; color: var(--muted); text-transform: uppercase; letter-spacing: 2px; }
+  .stop-count { background: var(--accent); color: #000; border-radius: 10px; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; }
+  .stops-list { display: flex; flex-direction: column; gap: 8px; }
+  .stop-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; animation: slideIn 0.25s ease; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+  .stop-index { width: 26px; height: 26px; border-radius: 50%; background: var(--stop-color); color: #000; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .stop-info { flex: 1; min-width: 0; }
-  .stop-name {
-    font-family: 'Rajdhani', sans-serif;
-    font-weight: 600;
-    font-size: 0.95rem;
-    color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .stop-coords {
-    font-size: 0.65rem;
-    color: var(--muted);
-    margin-top: 2px;
-  }
-  .stop-type-badge {
-    font-size: 0.6rem;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-family: 'Rajdhani', sans-serif;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    flex-shrink: 0;
-  }
+  .stop-name { font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 0.95rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stop-coords { font-size: 0.65rem; color: var(--muted); margin-top: 2px; }
+  .stop-type-badge { font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; font-family: 'Rajdhani', sans-serif; font-weight: 600; letter-spacing: 0.5px; flex-shrink: 0; }
   .badge-terminus { background: rgba(240,180,41,0.15); color: var(--accent); border: 1px solid var(--accent); }
   .badge-stop { background: rgba(88,166,255,0.1); color: var(--stop-color); border: 1px solid var(--stop-color); }
-  .btn-del {
-    background: none;
-    border: none;
-    color: var(--danger);
-    cursor: pointer;
-    font-size: 1rem;
-    padding: 2px 4px;
-    opacity: 0.5;
-    flex-shrink: 0;
-  }
+  .btn-del { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 1rem; padding: 2px 4px; opacity: 0.5; flex-shrink: 0; }
   .btn-del:hover { opacity: 1; }
-
-  /* WAYPOINTS */
-  .wpt-item {
-    background: var(--surface);
-    border: 1px dashed var(--border);
-    border-radius: 6px;
-    padding: 8px 12px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    animation: slideIn 0.2s ease;
-  }
-  .wpt-index {
-    width: 20px; height: 20px;
-    border-radius: 3px;
-    background: var(--surface2);
-    color: var(--muted);
-    font-size: 0.65rem;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-  }
+  .wpt-item { background: var(--surface); border: 1px dashed var(--border); border-radius: 6px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; animation: slideIn 0.2s ease; }
+  .wpt-index { width: 20px; height: 20px; border-radius: 3px; background: var(--surface2); color: var(--muted); font-size: 0.65rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .wpt-coords { font-size: 0.65rem; color: var(--muted); flex: 1; }
   .wpt-time { font-size: 0.6rem; color: var(--border); }
-
-  /* EMPTY STATE */
-  .empty-state {
-    text-align: center;
-    padding: 30px 20px;
-    color: var(--muted);
-    font-size: 0.8rem;
-    line-height: 1.8;
-  }
+  .empty-state { text-align: center; padding: 30px 20px; color: var(--muted); font-size: 0.8rem; line-height: 1.8; }
   .empty-icon { font-size: 2.5rem; margin-bottom: 8px; }
-
-  /* EXPORT SECTION */
-  .export-section {
-    padding: 14px 16px 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .export-title {
-    font-family: 'Rajdhani', sans-serif;
-    font-weight: 600;
-    font-size: 0.85rem;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    margin-bottom: 4px;
-  }
-  .btn-export {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    border-radius: 8px;
-    font-family: 'Rajdhani', sans-serif;
-    font-weight: 600;
-    font-size: 0.95rem;
-    letter-spacing: 1px;
-    padding: 12px 14px;
-    cursor: pointer;
-    text-transform: uppercase;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    transition: border-color 0.2s, color 0.2s;
-  }
+  .export-section { padding: 14px 16px 24px; display: flex; flex-direction: column; gap: 8px; }
+  .export-title { font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 0.85rem; color: var(--muted); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 4px; }
+  .btn-export { background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 0.95rem; letter-spacing: 1px; padding: 12px 14px; cursor: pointer; text-transform: uppercase; display: flex; align-items: center; gap: 10px; transition: border-color 0.2s, color 0.2s; width: 100%; }
   .btn-export:hover { border-color: var(--accent2); color: var(--accent2); }
   .btn-export:disabled { opacity: 0.3; cursor: not-allowed; }
   .btn-export .ext { font-size: 0.7rem; color: var(--muted); margin-left: auto; }
-
-  /* TOAST */
-  .toast {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%) translateY(80px);
-    background: var(--accent2);
-    color: #000;
-    font-family: 'Rajdhani', sans-serif;
-    font-weight: 700;
-    font-size: 0.9rem;
-    letter-spacing: 1px;
-    padding: 10px 20px;
-    border-radius: 24px;
-    z-index: 999;
-    transition: transform 0.3s ease;
-    white-space: nowrap;
-  }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--accent2); color: #000; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.9rem; letter-spacing: 1px; padding: 10px 20px; border-radius: 24px; z-index: 999; transition: transform 0.3s ease; white-space: nowrap; }
   .toast.show { transform: translateX(-50%) translateY(0); }
   .toast.error { background: var(--danger); color: #fff; }
-
-  /* TABS */
-  .tabs {
-    display: flex;
-    border-bottom: 1px solid var(--border);
-    margin: 0 16px;
-  }
-  .tab {
-    flex: 1;
-    text-align: center;
-    padding: 8px 4px;
-    font-family: 'Rajdhani', sans-serif;
-    font-weight: 600;
-    font-size: 0.85rem;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: var(--muted);
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-    transition: color 0.2s, border-color 0.2s;
-  }
+  .tabs { display: flex; border-bottom: 1px solid var(--border); margin: 0 16px; }
+  .tab { flex: 1; text-align: center; padding: 8px 4px; font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 0.85rem; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.2s, border-color 0.2s; }
   .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-
-  /* TRACKING STATE */
-  .tracking-indicator {
-    display: none;
-    align-items: center;
-    gap: 8px;
-    background: rgba(63,185,80,0.1);
-    border: 1px solid var(--accent2);
-    border-radius: 8px;
-    padding: 8px 12px;
-    margin: 0 16px 10px;
-    font-size: 0.75rem;
-    color: var(--accent2);
-  }
+  .tracking-indicator { display: none; align-items: center; gap: 8px; background: rgba(63,185,80,0.1); border: 1px solid var(--accent2); border-radius: 8px; padding: 8px 12px; margin: 0 16px 10px; font-size: 0.75rem; color: var(--accent2); }
   .tracking-indicator.active { display: flex; }
   .track-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent2); animation: pulse 1s infinite; }
 </style>
@@ -468,7 +118,6 @@
   </div>
 </header>
 
-<!-- ROUTE SETUP -->
 <div class="setup-panel">
   <div class="setup-grid">
     <div class="field-group">
@@ -500,10 +149,27 @@
         <option value="10000">10 sec — Minimal</option>
       </select>
     </div>
+    <div class="field-group">
+      <label>Accuracy Filter</label>
+      <select id="accuracyFilter">
+        <option value="10">±10m — Strict</option>
+        <option value="20" selected>±20m — Recommended</option>
+        <option value="30">±30m — Relaxed</option>
+        <option value="999">Off — No filter</option>
+      </select>
+    </div>
+    <div class="field-group">
+      <label>Jump Filter</label>
+      <select id="jumpFilter">
+        <option value="30">30m — Strict</option>
+        <option value="50" selected>50m — Recommended</option>
+        <option value="100">100m — Relaxed</option>
+        <option value="999999">Off — No filter</option>
+      </select>
+    </div>
   </div>
 </div>
 
-<!-- GPS COORDS -->
 <div class="coords-box">
   <div>
     <div class="coords-label">Current Position</div>
@@ -515,21 +181,16 @@
   </div>
 </div>
 
-<!-- TRACKING INDICATOR -->
 <div class="tracking-indicator" id="trackingIndicator">
   <div class="track-dot"></div>
   <span id="wptCountText">Recording waypoints (0 pts)</span>
 </div>
 
-<!-- ACTIONS -->
 <div class="actions">
-  <!-- Terminus buttons -->
   <div class="btn-row">
     <button class="btn-small" id="btnStartTerminus" onclick="markTerminus('start')">🟢 Start Route</button>
     <button class="btn-small" id="btnEndTerminus" onclick="markTerminus('end')">🔴 End Route</button>
   </div>
-
-  <!-- Stop marking -->
   <div class="stop-input-row">
     <div class="field-group">
       <label>Stop Name</label>
@@ -537,8 +198,6 @@
     </div>
     <button class="btn-mark" onclick="markStop()">📍 MARK</button>
   </div>
-
-  <!-- Tracking -->
   <div class="btn-row">
     <button class="btn-small" id="btnTrack" onclick="toggleTracking()">▶ Record Route</button>
     <button class="btn-small danger" id="btnClearAll" onclick="clearAll()">🗑 Clear All</button>
@@ -547,13 +206,11 @@
 
 <hr class="divider">
 
-<!-- TABS -->
 <div class="tabs">
   <div class="tab active" id="tabStops" onclick="switchTab('stops')">Stops</div>
   <div class="tab" id="tabWaypoints" onclick="switchTab('waypoints')">Waypoints</div>
 </div>
 
-<!-- STOPS LIST -->
 <div class="stops-section" id="panelStops">
   <div class="section-header">
     <span class="section-title">Marked Stops</span>
@@ -567,7 +224,6 @@
   </div>
 </div>
 
-<!-- WAYPOINTS LIST -->
 <div class="stops-section" id="panelWaypoints" style="display:none">
   <div class="section-header">
     <span class="section-title">Route Waypoints</span>
@@ -583,7 +239,6 @@
 
 <hr class="divider">
 
-<!-- EXPORT -->
 <div class="export-section">
   <div class="export-title">Export Route File</div>
   <button class="btn-export" id="btnExportGPX" onclick="exportGPX()">
@@ -598,7 +253,9 @@
 
 <div class="toast" id="toast"></div>
 
-<script>
+<script type="module">
+import { Filesystem, Directory } from 'https://cdn.jsdelivr.net/npm/@capacitor/filesystem@6/+esm';
+
 let currentPos = null;
 let stops = [];
 let waypoints = [];
@@ -607,7 +264,10 @@ let isTracking = false;
 let wptCounter = 0;
 let activeTab = 'stops';
 
-// ─── GPS ────────────────────────────────────────────────────────────────────
+// Detect if running inside Capacitor (Android APK) or browser
+const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+
+// ─── GPS ─────────────────────────────────────────────────────────────────────
 function initGPS() {
   if (!navigator.geolocation) {
     document.getElementById('gpsStatus').textContent = 'NOT SUPPORTED';
@@ -632,44 +292,25 @@ function initGPS() {
 }
 initGPS();
 
-// ─── TERMINUS ───────────────────────────────────────────────────────────────
+// ─── TERMINUS ────────────────────────────────────────────────────────────────
 function markTerminus(type) {
   if (!currentPos) { showToast('Waiting for GPS fix...', true); return; }
   const label = type === 'start' ? 'Start Route' : 'End Route';
-  // Remove existing terminus of this type
   stops = stops.filter(s => s.type !== `terminus-${type}`);
-  stops.push({
-    id: Date.now(),
-    name: label,
-    lat: currentPos.lat,
-    lng: currentPos.lng,
-    acc: currentPos.acc,
-    type: `terminus-${type}`,
-    time: new Date().toISOString()
-  });
+  stops.push({ id: Date.now(), name: label, lat: currentPos.lat, lng: currentPos.lng, acc: currentPos.acc, type: `terminus-${type}`, time: new Date().toISOString() });
   sortStops();
   renderStops();
-
   if (type === 'start') {
-    // Auto start recording if not already recording
-    if (!isTracking) {
-      startRecording();
-      showToast('Start Terminus marked ✓ — Recording started');
-    } else {
-      showToast('Start Terminus marked ✓');
-    }
+    if (!isTracking) { startRecording(); showToast('Start Route marked ✓ — Recording started'); }
+    else { showToast('Start Route marked ✓'); }
   } else {
-    // Auto stop recording if currently recording
-    if (isTracking) {
-      stopRecording();
-      showToast(`End Terminus marked ✓ — Recording stopped (${waypoints.length} waypoints)`);
-    } else {
-      showToast('End Terminus marked ✓');
-    }
+    if (isTracking) { stopRecording(); showToast(`End Route marked ✓ — Recording stopped (${waypoints.length} waypoints)`); }
+    else { showToast('End Route marked ✓'); }
   }
 }
+window.markTerminus = markTerminus;
 
-// ─── WAYPOINT TRACKING ───────────────────────────────────────────────────────
+// ─── RECORDING ───────────────────────────────────────────────────────────────
 function startRecording() {
   if (isTracking) return;
   isTracking = true;
@@ -678,21 +319,45 @@ function startRecording() {
   document.getElementById('trackingIndicator').classList.add('active');
   const intervalMs = parseInt(document.getElementById('trackInterval').value);
   const intervalLabel = `${intervalMs/1000}s`;
+  const accuracyThreshold = parseFloat(document.getElementById('accuracyFilter').value);
+  const jumpThreshold = parseFloat(document.getElementById('jumpFilter').value);
   document.getElementById('trackInterval').disabled = true;
+  document.getElementById('accuracyFilter').disabled = true;
+  document.getElementById('jumpFilter').disabled = true;
+
+  let lastAccepted = null;
+  let skippedCount = 0;
+
   trackingInterval = setInterval(() => {
-    if (currentPos) {
-      wptCounter++;
-      waypoints.push({
-        seq: wptCounter,
-        lat: currentPos.lat,
-        lng: currentPos.lng,
-        acc: currentPos.acc,
-        time: new Date().toISOString()
-      });
-      document.getElementById('wptCountText').textContent = `Recording every ${intervalLabel} · ${waypoints.length} pts`;
-      document.getElementById('wptCount').textContent = waypoints.length;
-      renderWaypoints();
+    if (!currentPos) return;
+
+    // ── Accuracy filter ──────────────────────────────
+    if (currentPos.acc > accuracyThreshold) {
+      skippedCount++;
+      document.getElementById('wptCountText').textContent =
+        `Recording every ${intervalLabel} · ${waypoints.length} pts · ⚠️ ${skippedCount} skipped (poor GPS)`;
+      return;
     }
+
+    // ── Jump filter ──────────────────────────────────
+    if (lastAccepted) {
+      const dist = haversine(lastAccepted.lat, lastAccepted.lng, currentPos.lat, currentPos.lng);
+      if (dist > jumpThreshold) {
+        skippedCount++;
+        document.getElementById('wptCountText').textContent =
+          `Recording every ${intervalLabel} · ${waypoints.length} pts · ⚠️ ${skippedCount} skipped (GPS jump ${Math.round(dist)}m)`;
+        return;
+      }
+    }
+
+    // ── Accept point ─────────────────────────────────
+    wptCounter++;
+    lastAccepted = { lat: currentPos.lat, lng: currentPos.lng };
+    waypoints.push({ seq: wptCounter, lat: currentPos.lat, lng: currentPos.lng, acc: currentPos.acc, time: new Date().toISOString() });
+    document.getElementById('wptCountText').textContent =
+      `Recording every ${intervalLabel} · ${waypoints.length} pts${skippedCount > 0 ? ` · ${skippedCount} filtered` : ''}`;
+    document.getElementById('wptCount').textContent = waypoints.length;
+    renderWaypoints();
   }, intervalMs);
 }
 
@@ -704,27 +369,31 @@ function stopRecording() {
   document.getElementById('btnTrack').style.color = '';
   document.getElementById('trackingIndicator').classList.remove('active');
   document.getElementById('trackInterval').disabled = false;
+  document.getElementById('accuracyFilter').disabled = false;
+  document.getElementById('jumpFilter').disabled = false;
 }
+
+function toggleTracking() {
+  if (isTracking) { stopRecording(); showToast(`Recording stopped. ${waypoints.length} waypoints captured.`); }
+  else {
+    if (!currentPos) { showToast('Waiting for GPS fix...', true); return; }
+    startRecording();
+    showToast(`Recording at ${parseInt(document.getElementById('trackInterval').value)/1000}s intervals`);
+  }
+}
+window.toggleTracking = toggleTracking;
 
 // ─── STOP ────────────────────────────────────────────────────────────────────
 function markStop() {
   if (!currentPos) { showToast('Waiting for GPS fix...', true); return; }
   const name = document.getElementById('stopName').value.trim();
   if (!name) { showToast('Enter a stop name first', true); return; }
-  stops.push({
-    id: Date.now(),
-    name,
-    lat: currentPos.lat,
-    lng: currentPos.lng,
-    acc: currentPos.acc,
-    type: 'stop',
-    time: new Date().toISOString()
-  });
-  sortStops();
-  renderStops();
+  stops.push({ id: Date.now(), name, lat: currentPos.lat, lng: currentPos.lng, acc: currentPos.acc, type: 'stop', time: new Date().toISOString() });
+  sortStops(); renderStops();
   document.getElementById('stopName').value = '';
   showToast(`Stop "${name}" marked ✓`);
 }
+window.markStop = markStop;
 
 function sortStops() {
   const start = stops.filter(s => s.type === 'terminus-start');
@@ -733,10 +402,8 @@ function sortStops() {
   stops = [...start, ...middle, ...end];
 }
 
-function deleteStop(id) {
-  stops = stops.filter(s => s.id !== id);
-  renderStops();
-}
+function deleteStop(id) { stops = stops.filter(s => s.id !== id); renderStops(); }
+window.deleteStop = deleteStop;
 
 function renderStops() {
   const list = document.getElementById('stopsList');
@@ -750,30 +417,16 @@ function renderStops() {
     const badge = isTerminus
       ? `<span class="stop-type-badge badge-terminus">${s.type === 'terminus-start' ? 'START ROUTE' : 'END ROUTE'}</span>`
       : `<span class="stop-type-badge badge-stop">STOP</span>`;
-    return `
-      <div class="stop-item">
-        <div class="stop-index" style="${isTerminus ? 'background:var(--accent)' : ''}">${i+1}</div>
-        <div class="stop-info">
-          <div class="stop-name">${s.name}</div>
-          <div class="stop-coords">${s.lat.toFixed(6)}, ${s.lng.toFixed(6)} · ±${Math.round(s.acc)}m</div>
-        </div>
-        ${badge}
-        <button class="btn-del" onclick="deleteStop(${s.id})">✕</button>
+    return `<div class="stop-item">
+      <div class="stop-index" style="${isTerminus ? 'background:var(--accent)' : ''}">${i+1}</div>
+      <div class="stop-info">
+        <div class="stop-name">${s.name}</div>
+        <div class="stop-coords">${s.lat.toFixed(6)}, ${s.lng.toFixed(6)} · ±${Math.round(s.acc)}m</div>
       </div>
-    `;
+      ${badge}
+      <button class="btn-del" onclick="deleteStop(${s.id})">✕</button>
+    </div>`;
   }).join('');
-}
-
-function toggleTracking() {
-  if (isTracking) {
-    stopRecording();
-    showToast(`Recording stopped. ${waypoints.length} waypoints captured.`);
-  } else {
-    if (!currentPos) { showToast('Waiting for GPS fix...', true); return; }
-    const intervalMs = parseInt(document.getElementById('trackInterval').value);
-    startRecording();
-    showToast(`Recording at ${intervalMs/1000}s intervals — tap stops as you go`);
-  }
 }
 
 function renderWaypoints() {
@@ -782,18 +435,10 @@ function renderWaypoints() {
     list.innerHTML = `<div class="empty-state"><div class="empty-icon">🗺️</div>Press <strong>Record Route</strong> while driving<br>to capture the road path automatically.</div>`;
     return;
   }
-  // Show last 20 only for performance
   const shown = waypoints.slice(-20).reverse();
-  list.innerHTML = shown.map(w => `
-    <div class="wpt-item">
-      <div class="wpt-index">${w.seq}</div>
-      <div class="wpt-coords">${w.lat.toFixed(6)}, ${w.lng.toFixed(6)}</div>
-      <div class="wpt-time">${w.time.slice(11,19)}</div>
-    </div>
-  `).join('');
+  list.innerHTML = shown.map(w => `<div class="wpt-item"><div class="wpt-index">${w.seq}</div><div class="wpt-coords">${w.lat.toFixed(6)}, ${w.lng.toFixed(6)}</div><div class="wpt-time">${w.time.slice(11,19)}</div></div>`).join('');
 }
 
-// ─── TABS ─────────────────────────────────────────────────────────────────────
 function switchTab(tab) {
   activeTab = tab;
   document.getElementById('panelStops').style.display = tab === 'stops' ? '' : 'none';
@@ -801,8 +446,8 @@ function switchTab(tab) {
   document.getElementById('tabStops').classList.toggle('active', tab === 'stops');
   document.getElementById('tabWaypoints').classList.toggle('active', tab === 'waypoints');
 }
+window.switchTab = switchTab;
 
-// ─── CLEAR ───────────────────────────────────────────────────────────────────
 function clearAll() {
   if (!confirm('Clear all stops and waypoints? This cannot be undone.')) return;
   if (isTracking) stopRecording();
@@ -812,14 +457,45 @@ function clearAll() {
   document.getElementById('wptCount').textContent = 0;
   showToast('Cleared.');
 }
+window.clearAll = clearAll;
+
+// ─── FILE SAVE (Android native OR browser fallback) ───────────────────────────
+async function saveFile(filename, content, mime) {
+  if (isNative) {
+    try {
+      await Filesystem.writeFile({
+        path: `Download/${filename}`,
+        data: btoa(unescape(encodeURIComponent(content))),
+        directory: Directory.ExternalStorage,
+        recursive: true
+      });
+      showToast(`Saved to Downloads/${filename} ✓`);
+    } catch (e) {
+      console.error(e);
+      // Fallback to browser download if native fails
+      browserDownload(filename, content, mime);
+    }
+  } else {
+    browserDownload(filename, content, mime);
+  }
+}
+
+function browserDownload(filename, content, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  showToast(`${filename} downloaded ✓`);
+}
 
 // ─── EXPORT: GPX ─────────────────────────────────────────────────────────────
-function exportGPX() {
+async function exportGPX() {
   if (stops.length === 0 && waypoints.length === 0) { showToast('Nothing to export yet', true); return; }
   const route = document.getElementById('routeName').value || 'route';
   const op = document.getElementById('operatorName').value || '';
   const now = new Date().toISOString();
-
   let gpx = `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="RouteSurvey-IPTMS" xmlns="http://www.topografix.com/GPX/1/1">
   <metadata>
@@ -827,8 +503,6 @@ function exportGPX() {
     <desc>Operator: ${escXml(op)} | Surveyor: ${escXml(document.getElementById('surveyorName').value)} | Direction: ${document.getElementById('direction').value}</desc>
     <time>${now}</time>
   </metadata>\n`;
-
-  // Waypoints (stops as wpt elements)
   stops.forEach((s, i) => {
     gpx += `  <wpt lat="${s.lat}" lon="${s.lng}">
     <name>${escXml(s.name)}</name>
@@ -837,110 +511,77 @@ function exportGPX() {
     <sym>${s.type.startsWith('terminus') ? 'Flag' : 'Bus Stop'}</sym>
   </wpt>\n`;
   });
-
-  // Route track
   if (waypoints.length > 0) {
     gpx += `  <trk>\n    <name>${escXml(route)} Track</name>\n    <trkseg>\n`;
-    waypoints.forEach(w => {
-      gpx += `      <trkpt lat="${w.lat}" lon="${w.lng}"><time>${w.time}</time></trkpt>\n`;
-    });
+    waypoints.forEach(w => { gpx += `      <trkpt lat="${w.lat}" lon="${w.lng}"><time>${w.time}</time></trkpt>\n`; });
     gpx += `    </trkseg>\n  </trk>\n`;
   }
   gpx += `</gpx>`;
-
-  download(`${route}_route.gpx`, gpx, 'application/gpx+xml');
-  showToast('GPX exported ✓');
+  await saveFile(`${route}_route.gpx`, gpx, 'application/gpx+xml');
 }
-
+window.exportGPX = exportGPX;
 
 // ─── EXPORT: KML ─────────────────────────────────────────────────────────────
-function exportKML() {
+async function exportKML() {
   if (stops.length === 0 && waypoints.length === 0) { showToast('Nothing to export yet', true); return; }
   const route = document.getElementById('routeName').value || 'route';
   const op = document.getElementById('operatorName').value || '';
   const surveyor = document.getElementById('surveyorName').value || '';
   const dir = document.getElementById('direction').value;
-
   let kml = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
 <Document>
   <name>${escXml(route)}</name>
   <description>Operator: ${escXml(op)} | Surveyor: ${escXml(surveyor)} | Direction: ${dir}</description>
-
-  <!-- Styles -->
-  <Style id="terminus-style">
-    <IconStyle>
-      <color>ff29b4f0</color>
-      <scale>1.3</scale>
-      <Icon><href>http://maps.google.com/mapfiles/kml/paddle/ylw-stars.png</href></Icon>
-    </IconStyle>
-    <LabelStyle><scale>1.1</scale></LabelStyle>
+  <Style id="start-style">
+    <IconStyle><color>ff00ff00</color><scale>1.3</scale><Icon><href>http://maps.google.com/mapfiles/kml/paddle/grn-circle.png</href></Icon></IconStyle>
+  </Style>
+  <Style id="end-style">
+    <IconStyle><color>ff0000ff</color><scale>1.3</scale><Icon><href>http://maps.google.com/mapfiles/kml/paddle/red-circle.png</href></Icon></IconStyle>
   </Style>
   <Style id="stop-style">
-    <IconStyle>
-      <color>ffff6658</color>
-      <scale>1.0</scale>
-      <Icon><href>http://maps.google.com/mapfiles/kml/paddle/blu-circle.png</href></Icon>
-    </IconStyle>
-    <LabelStyle><scale>0.9</scale></LabelStyle>
+    <IconStyle><color>ffff6658</color><scale>1.0</scale><Icon><href>http://maps.google.com/mapfiles/kml/paddle/blu-circle.png</href></Icon></IconStyle>
   </Style>
   <Style id="route-style">
-    <LineStyle>
-      <color>ff29b4f0</color>
-      <width>4</width>
-    </LineStyle>
+    <LineStyle><color>ff29b4f0</color><width>4</width></LineStyle>
   </Style>
-
-  <!-- Folder: Stops -->
-  <Folder>
-    <name>Stops &amp; Termini</name>\n`;
-
+  <Folder><name>Stops &amp; Termini</name>\n`;
   stops.forEach((s, i) => {
-    const styleId = s.type.startsWith('terminus') ? 'terminus-style' : 'stop-style';
+    const styleId = s.type === 'terminus-start' ? 'start-style' : s.type === 'terminus-end' ? 'end-style' : 'stop-style';
     kml += `    <Placemark>
       <name>${escXml(s.name)}</name>
-      <description>Seq: ${i+1} | Type: ${s.type} | Accuracy: ±${Math.round(s.acc)}m | Time: ${s.time}</description>
+      <description>Seq: ${i+1} | Accuracy: ±${Math.round(s.acc)}m | Time: ${s.time}</description>
       <styleUrl>#${styleId}</styleUrl>
       <Point><coordinates>${s.lng},${s.lat},0</coordinates></Point>
     </Placemark>\n`;
   });
-
   kml += `  </Folder>\n`;
-
-  // Route track line
   if (waypoints.length > 0) {
-    kml += `  <!-- Folder: Route Track -->
-  <Folder>
-    <name>Route Track</name>
+    kml += `  <Folder><name>Route Track</name>
     <Placemark>
       <name>${escXml(route)} Path</name>
       <styleUrl>#route-style</styleUrl>
-      <LineString>
-        <tessellate>1</tessellate>
-        <coordinates>\n`;
-    waypoints.forEach(w => {
-      kml += `          ${w.lng},${w.lat},0\n`;
-    });
-    kml += `        </coordinates>
-      </LineString>
+      <LineString><tessellate>1</tessellate><coordinates>\n`;
+    waypoints.forEach(w => { kml += `          ${w.lng},${w.lat},0\n`; });
+    kml += `        </coordinates></LineString>
     </Placemark>
   </Folder>\n`;
   }
-
   kml += `</Document>\n</kml>`;
-
-  download(`${route}_route.kml`, kml, 'application/vnd.google-earth.kml+xml');
-  showToast('KML exported ✓');
+  await saveFile(`${route}_route.kml`, kml, 'application/vnd.google-earth.kml+xml');
 }
+window.exportKML = exportKML;
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
-function download(filename, content, mime) {
-  const blob = new Blob([content], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename;
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a); URL.revokeObjectURL(url);
+// Haversine distance between two lat/lng points in metres
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng/2) * Math.sin(dLng/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 function escXml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function showToast(msg, err=false) {
@@ -949,6 +590,13 @@ function showToast(msg, err=false) {
   t.className = 'toast show' + (err ? ' error' : '');
   setTimeout(() => t.className = 'toast' + (err ? ' error' : ''), 2800);
 }
+window.showToast = showToast;
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/route-survey/sw.js');
+  }
 </script>
 </body>
 </html>
